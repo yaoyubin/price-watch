@@ -17,9 +17,21 @@ import yfinance as yf
 
 # ── Configuration ────────────────────────────────────────────────────────────
 WATCHLIST = {
-    "腾讯港股 (0700.HK)": "0700.HK",
-    "腾讯美股 (TCEHY)":   "TCEHY",
-    "比特币 (BTC/USD)":   "BTC-USD",
+    # A股
+    "中证500指数 (000905.SS)":    "000905.SS",
+    # 港股
+    "腾讯 (0700.HK)":             "0700.HK",
+    "美团 (3690.HK)":             "3690.HK",
+    "哔哩哔哩 (9626.HK)":         "9626.HK",
+    "恒生科技ETF (3032.HK)":      "3032.HK",
+    # 美股
+    "腾讯ADR (TCEHY)":            "TCEHY",
+    "特斯拉 (TSLA)":              "TSLA",
+    "AMD (AMD)":                  "AMD",
+    "台积电 (TSM)":               "TSM",
+    "纳斯达克ETF QQQ (QQQ)":      "QQQ",
+    # 加密货币
+    "比特币 (BTC/USD)":           "BTC-USD",
 }
 
 THRESHOLD_PCT  = 5.0  # trigger alert when |24h change| >= this percentage
