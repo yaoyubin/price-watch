@@ -41,36 +41,52 @@ def save_state(state: dict):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 
+# Stock exchanges go dark over weekends/holidays; if the most recent bar is
+# older than this threshold we treat the market as closed and skip alerting.
+MARKET_STALE_HOURS = 20
+
+
 def get_24h_change(symbol: str) -> tuple:
     """
-    Returns (current_price, price_24h_ago, change_pct).
-    Returns (None, None, None) on failure.
+    Returns (current_price, price_24h_ago, change_pct, stale: bool).
+    Returns (None, None, None, False) on failure.
+
+    stale=True means the latest data point is older than MARKET_STALE_HOURS
+    (e.g. stock market closed over the weekend).  No alert should fire.
     """
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2d", interval="1h")
+        # 5 trading days guarantees enough hourly bars even across weekends.
+        now_utc = datetime.now(timezone.utc)
+        hist    = ticker.history(period="5d", interval="1h")
 
         if hist.empty or len(hist) < 2:
-            return None, None, None
+            return None, None, None, False
+
+        # ── freshness check ───────────────────────────────────────────────────
+        latest_ts = hist.index[-1]
+        if latest_ts.tzinfo is None:
+            latest_ts = latest_ts.replace(tzinfo=timezone.utc)
+        data_age_hours = (now_utc - latest_ts).total_seconds() / 3600
+        stale = data_age_hours > MARKET_STALE_HOURS
 
         current_price = float(hist["Close"].iloc[-1])
-        now_ts = hist.index[-1]
-        target_ts = now_ts - timedelta(hours=24)
 
-        # Find the hourly bar closest to 24 hours ago
-        diffs = abs(hist.index - target_ts)
-        idx = int(diffs.argmin())
+        # ── find the bar closest to exactly 24 h before the latest bar ───────
+        target_ts = latest_ts - timedelta(hours=24)
+        diffs     = abs(hist.index - target_ts)
+        idx       = int(diffs.argmin())
         price_24h_ago = float(hist["Close"].iloc[idx])
 
         if price_24h_ago == 0:
-            return None, None, None
+            return None, None, None, False
 
         change_pct = (current_price - price_24h_ago) / price_24h_ago * 100
-        return current_price, price_24h_ago, change_pct
+        return current_price, price_24h_ago, change_pct, stale
 
     except Exception as exc:
         print(f"  [WARN] Failed to fetch {symbol}: {exc}")
-        return None, None, None
+        return None, None, None, False
 
 
 def should_alert(symbol: str, state: dict) -> bool:
@@ -95,6 +111,14 @@ def build_html_email(alerts: list, all_results: list, now_str: str) -> str:
             table_rows += (
                 f"<tr><td>{r['name']}</td>"
                 f"<td colspan='3' style='color:#9e9e9e;text-align:center'>数据获取失败</td></tr>"
+            )
+        elif r.get("stale"):
+            table_rows += (
+                f"<tr>"
+                f"<td>{r['name']}</td>"
+                f"<td>{r['current']:.4f}</td>"
+                f"<td colspan='2' style='color:#9e9e9e;text-align:center'>休市（数据已超 {MARKET_STALE_HOURS}h）</td>"
+                f"</tr>"
             )
         else:
             color = "#c62828" if r["change"] > 0 else "#2e7d32"
@@ -166,16 +190,21 @@ def main():
 
     for name, symbol in WATCHLIST.items():
         print(f"  检查 {name} ({symbol}) ...", end=" ", flush=True)
-        current, prev, change = get_24h_change(symbol)
+        current, prev, change, stale = get_24h_change(symbol)
 
         result = {
             "name": name, "symbol": symbol,
             "current": current, "prev": prev, "change": change,
+            "stale": stale,
         }
         all_results.append(result)
 
         if change is None:
             print("获取失败")
+            continue
+
+        if stale:
+            print(f"当前={current:.4f}  变动={change:+.2f}%  (休市，跳过预警)")
             continue
 
         print(f"当前={current:.4f}  24h前={prev:.4f}  变动={change:+.2f}%", end="")
