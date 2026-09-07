@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Investment Price Monitor
-Monitors Tencent HK/US stocks and BTC/USD for 24-hour price changes >= 5%.
+Monitors a watchlist of A-share / HK / US equities and BTC for 24-hour price changes >= 5%.
 Designed to run every 10 minutes via GitHub Actions.
 """
 
@@ -19,6 +19,7 @@ import yfinance as yf
 WATCHLIST = {
     # A股
     "中证500指数 (000905.SS)":    "000905.SS",
+    "沐曦股份 (688802.SS)":       "688802.SS",
     # 港股
     "腾讯 (0700.HK)":             "0700.HK",
     "美团 (3690.HK)":             "3690.HK",

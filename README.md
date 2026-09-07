@@ -7,6 +7,7 @@
 | 市场 | 标的 | Ticker |
 |------|------|--------|
 | A 股 | 中证 500 指数 | 000905.SS |
+| A 股 | 沐曦股份（科创板） | 688802.SS |
 | 港股 | 腾讯 | 0700.HK |
 | 港股 | 美团 | 3690.HK |
 | 港股 | 哔哩哔哩 | 9626.HK |
@@ -70,7 +71,7 @@ Gmail 不允许直接使用账户密码发送邮件，需要生成应用专用�
 
 ```bash
 # 安装依赖
-pip install yfinance
+pip install -r requirements.txt
 
 # 运行基础测试（不发送真实邮件）
 python3 test_monitor.py
