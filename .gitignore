@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local runtime state (persisted via GitHub Actions cache, not git)
+state.json
+
+# Editor / tooling
+.DS_Store
