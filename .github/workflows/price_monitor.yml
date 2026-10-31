@@ -2,7 +2,10 @@ name: Price Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes
+    # Twice an hour, offset from the top of the hour: GitHub drops queued
+    # scheduled jobs under load, and the hour boundary is the worst moment.
+    # The old '*/10' asked for 144 runs/day and actually delivered ~12.
+    - cron: '13,43 * * * *'
   workflow_dispatch:           # allow manual trigger from the Actions tab
 
 jobs:
