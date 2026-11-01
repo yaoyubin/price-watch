@@ -6,7 +6,15 @@ on:
     # scheduled jobs under load, and the hour boundary is the worst moment.
     # The old '*/10' asked for 144 runs/day and actually delivered ~12.
     - cron: '13,43 * * * *'
+    # Monthly keepalive, on a cron of its own so the keepalive job can tell
+    # it apart from the price checks via github.event.schedule.
+    - cron: '27 5 1 * *'
   workflow_dispatch:           # allow manual trigger from the Actions tab
+    inputs:
+      keepalive:
+        description: 'Also push an empty keepalive commit (use this to test the keepalive job)'
+        type: boolean
+        default: false
 
 jobs:
   monitor:
@@ -50,3 +58,31 @@ jobs:
         with:
           path: state.json
           key: price-monitor-state-${{ github.run_id }}
+
+  # A public repository has its scheduled workflows disabled automatically
+  # after 60 days with no activity, which is what the GitHub warning email is
+  # about. Pushing an empty commit once a month keeps the timer far from 60.
+  #
+  # Caveat: GitHub documents the 60-day rule but never says what counts as
+  # "repository activity", and in particular never says whether a commit
+  # pushed with GITHUB_TOKEN counts. If it turns out not to, the warning email
+  # arrives again and any ordinary push resets the timer by hand.
+  #
+  # Runs as its own job so a failing price check cannot take the keepalive
+  # down with it.
+  keepalive:
+    if: github.event.schedule == '27 5 1 * *' || github.event.inputs.keepalive == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # required to push the commit
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push empty keepalive commit
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -m 'chore: keepalive, reset the 60-day inactivity timer'
+          git push
